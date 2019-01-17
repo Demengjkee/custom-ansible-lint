@@ -252,14 +252,6 @@ def main():
             rs = post_comment(match, options.token, options.repo_name, options.pr_id, commit)
             print(rs)
         print(formatter.format(match, options.colored))
-    
-    
-
-    if len(matches):
-        return 2
-    else:
-        return 0
-
 
 
 if __name__ == "__main__":
