@@ -33,17 +33,21 @@ def load_config(config_file):
 
 
 
-def post_comment(match, token, repo_name, pr_id, commit):
+def post_comment(buff, token, repo_name, pr_id, commit):
     url = "https://api.github.com/repos/{}/pulls/{}/reviews".format(repo_name, pr_id)
-    text = "E{} |{}| {}\n".format(match.rule.id, match.rule.severity, match.message)
+    text_short = ""
+    text_full = ""
+    for match in buff:
+        text_short = "Multiple concerns:" if len(buff) > 1 else match.message
+        text_full += "* [**E{}**] {}\n\n".format(match.rule.id, match.rule.description)
     data = {
       "commit_id": commit.sha,
-      "body": text,
+      "body": text_short,
       "event": "COMMENT",
       "comments": [{
-        "path": match.filename,
-        "position": match.linenumber,
-        "body": match.rule.description
+        "path": buff[0].filename,
+        "position": buff[0].linenumber,
+        "body": text_full
       }]
     }
     headers = {
@@ -244,14 +248,31 @@ def main():
         pr = repo.get_pull(options.pr_id)
         commit = pr.get_commits().reversed[0]
 
+    buff_line = 0
+    buff = []
     for match in matches:
         if options.roles_dir in match.filename:
             match.filename = match.filename[len(options.roles_dir.rstrip("/"))+1:]
+
         if options.publish:
-            print("publishing comment to github")
-            rs = post_comment(match, options.token, options.repo_name, options.pr_id, commit)
-            print(rs)
+            if match.linenumber > buff_line and not buff:
+                buff_line = match.linenumber
+            if match.linenumber == buff_line:
+                buff.append(match)
+            elif match.linenumber > buff_line and buff:
+                print("publishing comment to github")
+                rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit)
+                print(rs)
+                buff = []
         print(formatter.format(match, options.colored))
+
+    if buff:
+        print("publishing comment to github")
+        rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit)
+        print(rs)
+        buff = []
+
+
 
 
 if __name__ == "__main__":
