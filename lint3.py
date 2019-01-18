@@ -33,8 +33,8 @@ def load_config(config_file):
 
 
 
-def post_comment(buff, token, repo_name, pr_id, commit):
-    url = "https://api.github.com/repos/{}/pulls/{}/reviews".format(repo_name, pr_id)
+def post_comment(buff, token, repo_name, pr_id, commit, publish):
+    
     text_short = ""
     text_full = ""
     print("\033[1;32m{}\033[0;0m:{}:".format(buff[0].filename, buff[0].linenumber))
@@ -49,24 +49,28 @@ def post_comment(buff, token, repo_name, pr_id, commit):
         print("\033[1;31m    [E{}] {}\033[0;0m\n    {}\n".format(match.rule.id, match.message, match.rule.description))
         text_short = "Multiple concerns:" if len(buff) > 1 else match.message
         text_full += "* [**E{}**] {}\n\n".format(match.rule.id, match.rule.description)
-    data = {
-      "commit_id": commit.sha,
-      "body": text_short,
-      "event": "COMMENT",
-      "comments": [{
-        "path": buff[0].filename,
-        "position": buff[0].linenumber,
-        "body": text_full
-      }]
-    }
-    headers = {
-      "Content-Type": "application/json",
-      "Authorization": "token {}".format(token)
-    }
-    r = requests.post(url, data=json.dumps(data), headers=headers)
-    if r.status_code != 200:
-        print(r.text)
-    return r.status_code
+    if publish:
+        print("publishing comment to github")
+        url = "https://api.github.com/repos/{}/pulls/{}/reviews".format(repo_name, pr_id)
+        data = {
+          "commit_id": commit.sha,
+          "body": text_short,
+          "event": "COMMENT",
+          "comments": [{
+            "path": buff[0].filename,
+            "position": buff[0].linenumber,
+            "body": text_full
+          }]
+        }
+        headers = {
+          "Content-Type": "application/json",
+          "Authorization": "token {}".format(token)
+        }
+        r = requests.post(url, data=json.dumps(data), headers=headers)
+        if r.status_code != 200:
+            print(r.text)
+        return r.status_code
+    return 0
 
 
 def main():
@@ -263,27 +267,24 @@ def main():
         if options.roles_dir in match.filename:
             match.filename = match.filename[len(options.roles_dir.rstrip("/"))+1:]
 
-        if options.publish:
-            if match.linenumber < buff_line:
-                if buff:
-                    print("publishing comment to github")
-                    rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit)
-                    print("{}\n".format(rs))
-                    buff = []
-                buff_line = 0
-            if match.linenumber > buff_line and buff:
-                print("publishing comment to github")
-                rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit)
+       
+        if match.linenumber < buff_line:
+            if buff:
+                rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit, options.publish)
                 print("{}\n".format(rs))
                 buff = []
-            if match.linenumber > buff_line:
-                buff_line = match.linenumber
-            if match.linenumber == buff_line:
-                buff.append(match)
+            buff_line = 0
+        if match.linenumber > buff_line and buff:
+            rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit, options.publish)
+            print("{}\n".format(rs))
+            buff = []
+        if match.linenumber > buff_line:
+            buff_line = match.linenumber
+        if match.linenumber == buff_line:
+            buff.append(match)
 #        print(formatter.format(match, options.colored))
     if buff:
-        print("publishing comment to github")
-        rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit)
+        rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit, options.publish)
         print("{}\n".format(rs))
         buff = []
 
