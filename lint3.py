@@ -255,17 +255,16 @@ def main():
             match.filename = match.filename[len(options.roles_dir.rstrip("/"))+1:]
 
         if options.publish:
-            if match.linenumber > buff_line and not buff:
-                buff_line = match.linenumber
-            if match.linenumber == buff_line:
-                buff.append(match)
-            elif match.linenumber > buff_line and buff:
+            if match.linenumber > buff_line and buff:
                 print("publishing comment to github")
                 rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit)
                 print(rs)
                 buff = []
+            if match.linenumber > buff_line:
+                buff_line = match.linenumber
+            if match.linenumber == buff_line:
+                buff.append(match)
         print(formatter.format(match, options.colored))
-
     if buff:
         print("publishing comment to github")
         rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit)
