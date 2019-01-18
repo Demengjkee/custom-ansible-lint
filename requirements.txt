@@ -1,5 +1,5 @@
 six
 pyyaml
-ansible-lint
+ansible-lint==3.5.1
 requests
 PyGithub
