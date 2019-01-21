@@ -38,12 +38,18 @@ def post_comment(buff, token, repo_name, pr_id, commit, publish):
     text_short = ""
     text_full = ""
     print("\033[1;32m{}\033[0;0m:{}:".format(buff[0].filename, buff[0].linenumber))
-    body = "---\n"
-    with open(buff[0].filename, "r") as f:
-        ln = buff[0].linenumber
-        text = f.read().split("\n")
-        body += "\n".join(text[max(0, ln-2):min(ln+3, len(text))])
-    body += "\n---\n"
+    body = ""
+    
+    text_file = open(buff[0].filename, "r")
+    lines = text_file.readlines()
+    ln = buff[0].linenumber
+    for item in range(max(0,ln-2), min(ln+3, len(lines))):
+      if item == ln:
+        body += " -> %+4s: %s" % (item, lines[item])
+      else:
+        body += "    %+4s: %s" % (item, lines[item])
+
+    body += "\n"
     print(body)
     for match in buff:
         print("\033[1;31m    [E{}] {}\033[0;0m\n    {}\n".format(match.rule.id, match.message, match.rule.description))
@@ -266,17 +272,15 @@ def main():
     for match in matches:
         if options.roles_dir in match.filename:
             match.filename = match.filename[len(options.roles_dir.rstrip("/"))+1:]
-
-       
         if match.linenumber < buff_line:
             if buff:
                 rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit, options.publish)
-                print("{}\n".format(rs))
+                # print("{}\n".format(rs))
                 buff = []
             buff_line = 0
         if match.linenumber > buff_line and buff:
             rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit, options.publish)
-            print("{}\n".format(rs))
+            # print("{}\n".format(rs))
             buff = []
         if match.linenumber > buff_line:
             buff_line = match.linenumber
@@ -285,7 +289,7 @@ def main():
 #        print(formatter.format(match, options.colored))
     if buff:
         rs = post_comment(buff, options.token, options.repo_name, options.pr_id, commit, options.publish)
-        print("{}\n".format(rs))
+        # print("{}\n".format(rs))
         buff = []
 
 
